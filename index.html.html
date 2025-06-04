@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>freshchat</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card-bg: #f5f5f5;
+      --accent: #007bff;
+      --hover-bg: #e9ecef;
+      --text: #212529;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      padding: 1.5rem;
+      text-align: center;
+      background: linear-gradient(to right, #00cfff, #00f0ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 2rem;
+      font-weight: bold;
+    }
+
+    .byline {
+      display: block;
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    main {
+      max-width: 400px;
+      margin: auto;
+      padding: 1rem;
+    }
+
+    input[type="text"], button {
+      width: 100%;
+      padding: 0.75rem;
+      margin-top: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: var(--accent);
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .message {
+      text-align: left;
+      margin: 0.5rem 0;
+      padding: 0.5rem 0.75rem;
+      background: var(--card-bg);
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+
+    #messages {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      background: #fafafa;
+    }
+
+    .code-display {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 1rem;
+    }
+
+    .code-display input {
+      flex: 1;
+      background: #fff;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .code-display button {
+      background: #28a745;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+
+    .code-display button:hover {
+      background: #218838;
+    }
+  </style>
+</head>
+<body>
+
+  <header>freshchat</header>
+  <span class="byline">Hecho por freshcouu</span>
+
+  <main>
+    <!-- Paso 1: Seleccionar nombre -->
+    <div id="step-join">
+      <h2 style="margin-bottom: 1rem;">Ingresa a un chat</h2>
+      <input type="text" id="username" placeholder="Tu nombre..." />
+      <input type="text" id="chat-code" placeholder="Código del chat..." />
+      <button onclick="joinChat()">Entrar</button>
+      <button onclick="createChat()" style="background:#28a745; margin-top:1rem;">Crear nuevo chat</button>
+    </div>
+
+    <!-- Paso 2: Sala de chat -->
+    <div id="step-chat" style="display:none;">
+      <p><strong>Código de la sala:</strong></p>
+      <div class="code-display">
+        <input type="text" id="current-code" readonly />
+        <button onclick="copyCode()">Copiar</button>
+      </div>
+      <div id="messages"></div>
+      <input type="text" id="message-input" placeholder="Escribe un mensaje..." onkeypress="handleKeyPress(event)" />
+      <button onclick="sendMessage()">Enviar</button>
+    </div>
+  </main>
+
+  <script>
+    let currentChatCode = "";
+    const messagesContainer = document.getElementById("messages");
+
+    // Crea una nueva sala con código aleatorio
+    function createChat() {
+      const code = generateCode();
+      currentChatCode = code;
+      document.getElementById("current-code").value = code;
+      switchToChat();
+      loadMessages();
+    }
+
+    // Entra a una sala existente
+    function joinChat() {
+      const code = document.getElementById("chat-code").value.trim();
+      if (!code) return alert("Por favor ingresa un código");
+      currentChatCode = code;
+      document.getElementById("current-code").value = code;
+      switchToChat();
+      loadMessages();
+    }
+
+    // Cambiar a pantalla de chat
+    function switchToChat() {
+      document.getElementById("step-join").style.display = "none";
+      document.getElementById("step-chat").style.display = "block";
+    }
+
+    // Generar código único
+    function generateCode() {
+      return Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
+    // Guardar mensaje
+    function sendMessage() {
+      const input = document.getElementById("message-input");
+      const message = input.value.trim();
+      const username = document.getElementById("username").value.trim();
+
+      if (!message || !username) return;
+
+      const chatKey = "chat_" + currentChatCode;
+      const newMessage = { user: username, text: message, time: Date.now() };
+
+      const messages = JSON.parse(localStorage.getItem(chatKey)) || [];
+      messages.push(newMessage);
+      localStorage.setItem(chatKey, JSON.stringify(messages));
+
+      input.value = "";
+      loadMessages();
+    }
+
+    // Mostrar mensajes
+    function loadMessages() {
+      const chatKey = "chat_" + currentChatCode;
+      const messages = JSON.parse(localStorage.getItem(chatKey)) || [];
+
+      messagesContainer.innerHTML = "";
+      messages.forEach(msg => {
+        const div = document.createElement("div");
+        div.className = "message";
+        div.innerText = `${msg.user}: ${msg.text}`;
+        messagesContainer.appendChild(div);
+      });
+
+      scrollToBottom();
+    }
+
+    // Volver a cargar mensajes cada segundo
+    setInterval(() => {
+      if (document.getElementById("step-chat").style.display === "block") {
+        loadMessages();
+      }
+    }, 1000);
+
+    // Scroll automático al último mensaje
+    function scrollToBottom() {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Copiar código al portapapeles
+    function copyCode() {
+      const codeInput = document.getElementById("current-code");
+      codeInput.select();
+      codeInput.setSelectionRange(0, 99999); // Para móviles
+      navigator.clipboard.writeText(codeInput.value);
+      alert("¡Código copiado!");
+    }
+
+    // Enter para enviar
+    function handleKeyPress(e) {
+      if (e.key === "Enter") sendMessage();
+    }
+  </script>
+
+</body>
+</html>
